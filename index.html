@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>MESCE · Santuário Nossa Senhora da Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase (Firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --pergaminho: #F7F1E3;
+    --pergaminho-alt: #EFE6D0;
+    --tinta: #2B2118;
+    --tinta-suave: #6B5D4C;
+    --dourado: #B8892B;
+    --dourado-escuro: #8C6A1F;
+    --vinho: #6B1F2A;
+    --verde: #2F5233;
+    --roxo: #4B2E5C;
+    --rosa: #C97B94;
+    --linha: #DCCFAF;
+    --branco-card: #FFFDF7;
+    --sombra: 0 2px 10px rgba(43,33,24,0.08);
+    --radius: 14px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--pergaminho);
+    color:var(--tinta);
+    font-family:'Source Sans 3', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:84px;
+    min-height:100vh;
+  }
+  h1,h2,h3,.serif{
+    font-family:'Cormorant Garamond', Georgia, serif;
+    letter-spacing:0.01em;
+  }
+  a{ color:var(--vinho); }
+
+  /* ---------- Header ---------- */
+  header.top{
+    background:linear-gradient(180deg, var(--vinho) 0%, #591723 100%);
+    color:var(--pergaminho);
+    padding:22px 20px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  header.top::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px;
+    width:160px; height:160px;
+    border:1px solid rgba(247,241,227,0.18);
+    border-radius:50%;
+  }
+  header.top .seal{
+    width:38px; height:38px;
+    border:1.5px solid var(--dourado);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--dourado);
+    font-size:20px;
+    margin-bottom:10px;
+  }
+  header.top h1{
+    font-size:26px;
+    margin:0 0 2px;
+    font-weight:600;
+    color:#fff;
+  }
+  header.top .sub{
+    font-size:13.5px;
+    color:#E8D9C2;
+    margin:0;
+  }
+  header.top .today{
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--dourado);
+    text-transform:uppercase;
+    letter-spacing:0.09em;
+    font-weight:600;
+  }
+
+  main{ max-width:640px; margin:0 auto; padding:18px 16px 8px; }
+
+  .tab-panel{ display:none; animation:fade .25s ease; }
+  .tab-panel.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  section.block-title{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin: 6px 2px 12px;
+  }
+  section.block-title h2{
+    font-size:21px; margin:0; font-weight:600;
+  }
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:var(--branco-card);
+    border:1px solid var(--linha);
+    border-radius:var(--radius);
+    box-shadow:var(--sombra);
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+
+  /* ---------- Tarefas ---------- */
+  .task-form{
+    display:flex; flex-direction:column; gap:8px;
+    margin-bottom:16px;
+  }
+  input[type=text], textarea, select, input[type=date]{
+    font-family:inherit;
+    font-size:15px;
+    padding:10px 12px;
+    border:1px solid var(--linha);
+    border-radius:10px;
+    background:#fff;
+    color:var(--tinta);
+    width:100%;
+  }
+  textarea{ resize:vertical; min-height:52px; }
+  .row{ display:flex; gap:8px; }
+  .row > *{ flex:1; }
+  .btn{
+    font-family:inherit;
+    font-weight:600;
+    font-size:14.5px;
+    border:none;
+    border-radius:10px;
+    padding:11px 16px;
+    cursor:pointer;
+    transition:transform .1s ease, opacity .15s ease;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--vinho); color:#fff; }
+  .btn-outline{ background:transparent; border:1px solid var(--vinho); color:var(--vinho); }
+  .btn-ghost{ background:transparent; color:var(--tinta-suave); font-size:13px; padding:6px 8px; }
+  .btn-small{ padding:7px 10px; font-size:13px; }
+  .file-label{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13.5px; color:var(--tinta-suave);
+    border:1px dashed var(--linha);
+    border-radius:10px; padding:9px 12px;
+    cursor:pointer;
+  }
+  .file-label input{ display:none; }
+
+  .task-item{
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .task-check{
+    width:24px; height:24px; min-width:24px;
+    border:2px solid var(--dourado-escuro);
+    border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; margin-top:2px;
+    color:#fff; font-size:14px;
+  }
+  .task-check.done{ background:var(--verde); border-color:var(--verde); }
+  .task-body{ flex:1; min-width:0; }
+  .task-title{ font-weight:600; font-size:15.5px; margin:0 0 2px; }
+  .task-title.done{ text-decoration:line-through; color:var(--tinta-suave); }
+  .task-note{ font-size:13.5px; color:var(--tinta-suave); margin:0 0 8px; white-space:pre-wrap; }
+  .task-photo{ max-width:100%; border-radius:10px; margin-bottom:8px; display:block; }
+  .task-actions{ display:flex; gap:14px; }
+  .task-actions button{ background:none; border:none; padding:0; font-size:12.5px; color:var(--tinta-suave); cursor:pointer; text-decoration:underline; }
+  .empty{
+    text-align:center; color:var(--tinta-suave); font-size:14px;
+    padding:30px 10px;
+  }
+
+  /* ---------- Glossário ---------- */
+  .gloss-tabs{
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .gloss-tabs button{
+    white-space:nowrap;
+    font-family:inherit; font-size:13.5px; font-weight:600;
+    padding:8px 13px; border-radius:999px;
+    border:1px solid var(--linha);
+    background:#fff; color:var(--tinta-suave);
+    cursor:pointer;
+  }
+  .gloss-tabs button.active{
+    background:var(--vinho); color:#fff; border-color:var(--vinho);
+  }
+  .search-box{ margin-bottom:14px; }
+  .gloss-item{ margin-bottom:10px; }
+  .gloss-item .icon{
+    width:34px; height:34px; border-radius:50%;
+    background:var(--pergaminho-alt); color:var(--dourado-escuro);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; margin-bottom:8px;
+  }
+  .gloss-item h3{ font-size:17px; margin:0 0 4px; font-weight:600; }
+  .gloss-item p{ font-size:14px; margin:0; color:#4a3c2c; line-height:1.5; }
+  .color-dot{ width:14px; height:14px; border-radius:50%; display:inline-block; margin-right:8px; border:1px solid rgba(0,0,0,0.15); vertical-align:-1px; }
+
+  /* ---------- Calendário ---------- */
+  .cal-item{ display:flex; gap:12px; align-items:flex-start; }
+  .cal-date{
+    min-width:52px; text-align:center;
+    background:var(--pergaminho-alt); border-radius:10px; padding:6px 4px;
+  }
+  .cal-date .d{ font-family:'Cormorant Garamond',serif; font-size:20px; font-weight:700; line-height:1; }
+  .cal-date .m{ font-size:10.5px; text-transform:uppercase; color:var(--tinta-suave); letter-spacing:0.05em; }
+  .cal-body{ flex:1; }
+  .cal-body h3{ font-size:15.5px; margin:0 0 3px; font-weight:600; }
+  .cal-body .tag{ font-size:12px; color:var(--tinta-suave); }
+
+  /* ---------- Vídeos ---------- */
+  .video-item{ display:flex; gap:12px; align-items:center; }
+  .video-thumb{ width:96px; height:64px; border-radius:8px; object-fit:cover; background:var(--pergaminho-alt); flex-shrink:0; }
+  .video-item h3{ font-size:14.5px; margin:0 0 4px; font-weight:600; }
+  .video-item a{ font-size:12.5px; text-decoration:none; }
+
+  /* ---------- Bottom nav ---------- */
+  nav.bottom{
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--branco-card);
+    border-top:1px solid var(--linha);
+    display:flex;
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+    z-index:50;
+  }
+  nav.bottom button{
+    flex:1; background:none; border:none;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-family:inherit; font-size:11px; font-weight:600;
+    color:var(--tinta-suave); padding:6px 2px;
+    cursor:pointer;
+  }
+  nav.bottom button .ic{ font-size:20px; }
+  nav.bottom button.active{ color:var(--vinho); }
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(43,33,24,0.5);
+    display:none; align-items:flex-end; justify-content:center; z-index:100;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal{
+    background:var(--pergaminho); width:100%; max-width:640px;
+    border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    max-height:85vh; overflow-y:auto;
+  }
+  .modal h2{ margin:0 0 14px; font-size:20px; }
+
+  .sync-banner{
+    font-size:12px; text-align:center; padding:7px; color:var(--tinta-suave);
+    background:var(--pergaminho-alt); border-radius:10px; margin-bottom:14px;
+  }
+  .sync-banner.err{ color:#7a1c1c; background:#f6dede; }
+
+  :focus-visible{ outline:2px solid var(--dourado-escuro); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="seal">✝</div>
+  <h1>MESCE</h1>
+  <p class="sub">Santuário Nossa Senhora da Saúde · Arquidiocese de Brasília</p>
+  <p class="today" id="today-label"></p>
+</header>
+
+<main>
+
+  <div id="sync-status" class="sync-banner" style="display:none;"></div>
+
+  <!-- TAREFAS -->
+  <div class="tab-panel active" id="panel-tarefas">
+    <section class="block-title"><h2>Tarefas do dia</h2></section>
+
+    <div class="card">
+      <form class="task-form" id="task-form">
+        <input type="text" id="task-titulo" placeholder="Título (ex: Preparar cálice e galhetas)" required>
+        <textarea id="task-obs" placeholder="Observação (opcional)"></textarea>
+        <div class="row">
+          <label class="file-label">
+            📷 Adicionar foto
+            <input type="file" accept="image/*" id="task-foto">
+          </label>
+          <button type="submit" class="btn btn-primary">Adicionar tarefa</button>
+        </div>
+        <div id="task-foto-preview" style="font-size:12.5px;color:var(--tinta-suave);"></div>
+      </form>
+    </div>
+
+    <div id="tasks-list"></div>
+  </div>
+
+  <!-- GLOSSÁRIO -->
+  <div class="tab-panel" id="panel-glossario">
+    <section class="block-title"><h2>Glossário Litúrgico</h2></section>
+    <input type="text" class="search-box" id="gloss-search" placeholder="Buscar (ex: âmbula, casula...)">
+    <div class="gloss-tabs" id="gloss-tabs"></div>
+    <div id="gloss-content"></div>
+  </div>
+
+  <!-- CALENDÁRIO -->
+  <div class="tab-panel" id="panel-calendario">
+    <section class="block-title">
+      <h2>Calendário Litúrgico</h2>
+      <button class="btn btn-outline btn-small" id="cal-add-btn">+ Data</button>
+    </section>
+    <div id="cal-list"></div>
+  </div>
+
+  <!-- VÍDEOS -->
+  <div class="tab-panel" id="panel-videos">
+    <section class="block-title">
+      <h2>Vídeos</h2>
+      <button class="btn btn-outline btn-small" id="video-add-btn">+ Link</button>
+    </section>
+    <div id="video-list"></div>
+  </div>
+
+</main>
+
+<nav class="bottom">
+  <button class="tab-btn active" data-tab="tarefas"><span class="ic">✅</span>Tarefas</button>
+  <button class="tab-btn" data-tab="glossario"><span class="ic">📖</span>Glossário</button>
+  <button class="tab-btn" data-tab="calendario"><span class="ic">🗓️</span>Calendário</button>
+  <button class="tab-btn" data-tab="videos"><span class="ic">🎥</span>Vídeos</button>
+</nav>
+
+<!-- Modal: nova data no calendário -->
+<div class="modal-backdrop" id="cal-modal">
+  <div class="modal">
+    <h2>Nova data</h2>
+    <form id="cal-form" class="task-form">
+      <input type="date" id="cal-data" required>
+      <input type="text" id="cal-evento" placeholder="Nome do evento / celebração" required>
+      <select id="cal-cor" required>
+        <option value="">Cor litúrgica</option>
+        <option value="branco">Branco</option>
+        <option value="vermelho">Vermelho</option>
+        <option value="verde">Verde</option>
+        <option value="roxo">Roxo</option>
+        <option value="rosa">Rosa</option>
+      </select>
+      <div class="row">
+        <button type="button" class="btn btn-outline" id="cal-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: novo vídeo -->
+<div class="modal-backdrop" id="video-modal">
+  <div class="modal">
+    <h2>Novo vídeo</h2>
+    <form id="video-form" class="task-form">
+      <input type="text" id="video-titulo" placeholder="Título do vídeo" required>
+      <input type="text" id="video-url" placeholder="Link do YouTube" required>
+      <div class="row">
+        <button type="button" class="btn btn-outline" id="video-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO FIREBASE
+   Substitua os valores abaixo pelos gerados no Console do
+   Firebase (Configurações do projeto > seus apps > Web).
+   Enquanto isso não for feito, o app funciona apenas
+   localmente neste navegador (sem sincronizar entre celulares).
+========================================================= */
+const firebaseConfig = {
+  apiKey: "COLE_AQUI",
+  authDomain: "COLE_AQUI",
+  projectId: "COLE_AQUI",
+  storageBucket: "COLE_AQUI",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+
+let db = null;
+let firebaseReady = false;
+
+function initFirebase(){
+  const statusEl = document.getElementById('sync-status');
+  if (firebaseConfig.apiKey === "COLE_AQUI") {
+    statusEl.style.display = 'block';
+    statusEl.textContent = '⚠️ Firebase ainda não configurado — os dados ficam salvos apenas neste celular.';
+    statusEl.classList.add('err');
+    return;
+  }
+  try{
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+    statusEl.style.display = 'block';
+    statusEl.textContent = '✅ Sincronizado — as alterações aparecem nos dois celulares.';
+    setTimeout(()=>{ statusEl.style.display='none'; }, 3500);
+  }catch(e){
+    statusEl.style.display = 'block';
+    statusEl.classList.add('err');
+    statusEl.textContent = '⚠️ Erro ao conectar ao Firebase. Verifique a configuração.';
+    console.error(e);
+  }
+}
+initFirebase();
+
+/* ---------------------------------------------------------
+   Armazenamento local de apoio (fallback quando Firebase
+   ainda não está configurado)
+--------------------------------------------------------- */
+function localGet(key, fallback){
+  try{ return JSON.parse(localStorage.getItem(key)) ?? fallback; }catch(e){ return fallback; }
+}
+function localSet(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+/* ---------------------------------------------------------
+   Data de hoje no cabeçalho
+--------------------------------------------------------- */
+(function setToday(){
+  const el = document.getElementById('today-label');
+  const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric' };
+  el.textContent = new Date().toLocaleDateString('pt-BR', opts);
+})();
+
+/* ---------------------------------------------------------
+   Navegação entre abas
+--------------------------------------------------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------------------------------------------------------
+   Utilidades genéricas de coleção (Firestore ou localStorage)
+--------------------------------------------------------- */
+function watchCollection(name, orderField, cb){
+  if (firebaseReady){
+    db.collection(name).orderBy(orderField, 'desc').onSnapshot(snap=>{
+      const items = [];
+      snap.forEach(doc=> items.push({ ...doc.data(), id: doc.id }));
+      cb(items);
+    }, err=>{
+      console.error(err);
+      cb(localGet(name, []));
+    });
+  } else {
+    cb(localGet(name, []).sort((a,b)=> (b[orderField]||0) - (a[orderField]||0)));
+  }
+}
+function addToCollection(name, data){
+  data.criadoEm = Date.now();
+  if (firebaseReady){
+    return db.collection(name).add(data);
+  } else {
+    const items = localGet(name, []);
+    data.id = 'local-' + Date.now();
+    items.push(data);
+    localSet(name, items);
+    watchers[name] && watchers[name]();
+    return Promise.resolve();
+  }
+}
+function updateInCollection(name, id, data){
+  if (firebaseReady){
+    return db.collection(name).doc(id).update(data);
+  } else {
+    const items = localGet(name, []);
+    const idx = items.findIndex(i=>i.id===id);
+    if (idx>-1) items[idx] = { ...items[idx], ...data };
+    localSet(name, items);
+    watchers[name] && watchers[name]();
+    return Promise.resolve();
+  }
+}
+function deleteFromCollection(name, id){
+  if (firebaseReady){
+    return db.collection(name).doc(id).delete();
+  } else {
+    let items = localGet(name, []);
+    items = items.filter(i=>i.id!==id);
+    localSet(name, items);
+    watchers[name] && watchers[name]();
+    return Promise.resolve();
+  }
+}
+const watchers = {};
+
+/* ===========================================================
+   TAREFAS
+=========================================================== */
+let selectedPhoto = null;
+
+document.getElementById('task-foto').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if (!file) { selectedPhoto = null; return; }
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      selectedPhoto = canvas.toDataURL('image/jpeg', 0.6);
+      document.getElementById('task-foto-preview').textContent = '📎 foto anexada';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('task-form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const titulo = document.getElementById('task-titulo').value.trim();
+  const obs = document.getElementById('task-obs').value.trim();
+  if (!titulo) return;
+  addToCollection('tarefas', {
+    titulo, observacao: obs, foto: selectedPhoto || null, concluida: false
+  }).then(()=>{
+    document.getElementById('task-form').reset();
+    document.getElementById('task-foto-preview').textContent = '';
+    selectedPhoto = null;
+  });
+});
+
+function renderTasks(items){
+  const list = document.getElementById('tasks-list');
+  if (!items.length){
+    list.innerHTML = '<div class="empty">Nenhuma tarefa ainda. Adicione a primeira acima ✝</div>';
+    return;
+  }
+  list.innerHTML = items.map(t=>`
+    <div class="card task-item" data-id="${t.id}">
+      <div class="task-check ${t.concluida ? 'done':''}" data-action="toggle">${t.concluida ? '✓' : ''}</div>
+      <div class="task-body">
+        <p class="task-title ${t.concluida ? 'done':''}">${escapeHtml(t.titulo)}</p>
+        ${t.observacao ? `<p class="task-note">${escapeHtml(t.observacao)}</p>` : ''}
+        ${t.foto ? `<img class="task-photo" src="${t.foto}" alt="Foto da tarefa">` : ''}
+        <div class="task-actions">
+          <button data-action="delete">Excluir</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.task-item').forEach(el=>{
+    const id = el.dataset.id;
+    el.querySelector('[data-action="toggle"]').addEventListener('click', ()=>{
+      const item = items.find(i=>i.id===id);
+      updateInCollection('tarefas', id, { concluida: !item.concluida });
+    });
+    el.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+      if (confirm('Excluir esta tarefa?')) deleteFromCollection('tarefas', id);
+    });
+  });
+}
+watchers['tarefas'] = ()=> watchCollection('tarefas', 'criadoEm', renderTasks);
+watchers['tarefas']();
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ===========================================================
+   GLOSSÁRIO LITÚRGICO
+=========================================================== */
+const glossario = {
+  objetos: {
+    label: 'Objetos', icon:'🏺',
+    itens: [
+      { nome:'Âmbula (Cibório / Píxide)', desc:'Recipiente com tampa usado para guardar e distribuir as hóstias consagradas aos fiéis.' },
+      { nome:'Cálice', desc:'Taça em que o vinho é consagrado durante a missa.' },
+      { nome:'Patena', desc:'Pequeno prato metálico usado na consagração do pão e na distribuição da comunhão, para evitar que partículas consagradas caiam.' },
+      { nome:'Teca', desc:'Pequeno estojo metálico usado para levar a comunhão a doentes ou pessoas fora do templo.' },
+      { nome:'Hóstia e partículas', desc:'A hóstia maior é consagrada e consumida pelo sacerdote; as menores, chamadas partículas, são distribuídas aos fiéis. As que ficam guardadas no sacrário para adoração são a reserva eucarística.' },
+      { nome:'Turíbulo e naveta', desc:'O turíbulo é o recipiente onde se queima o incenso durante a incensação; a naveta é o pequeno vaso usado para transportar o incenso até ele.' },
+      { nome:'Crucifixo do altar', desc:'Crucifixo de menor porte que permanece sobre o altar durante a celebração, distinto da cruz processional.' },
+      { nome:'Galhetas', desc:'Par de pequenos recipientes usados para conter a água e o vinho na celebração.' },
+      { nome:'Corporal', desc:'Toalha quadrada estendida sobre o altar, onde se colocam o cálice e a patena durante a celebração.' },
+      { nome:'Pala', desc:'Peça rígida revestida de tecido, usada para cobrir o cálice e a patena.' },
+      { nome:'Sanguíneo (purificatório)', desc:'Pano retangular usado pelo sacerdote para limpar o cálice, e a boca e os dedos, após a comunhão.' },
+      { nome:'Manustérgio', desc:'Toalha pequena usada para secar as mãos no rito do lavabo.' },
+      { nome:'Caldeirinha e aspersório', desc:'A caldeirinha guarda a água benta; o aspersório é o bastão usado para aspergi-la sobre os fiéis.' },
+      { nome:'Ostensório (custódia e luneta)', desc:'Objeto usado para expor o Santíssimo Sacramento à adoração. A custódia é a estrutura fixa; a luneta é a peça circular transparente onde a hóstia consagrada é colocada.' },
+      { nome:'Círio Pascal', desc:'Vela grande, bento na Vigília Pascal, usado durante todo o Tempo Pascal e em batizados ao longo do ano — símbolo da luz de Cristo.' },
+    ]
+  },
+  livros: {
+    label:'Livros', icon:'📕',
+    itens: [
+      { nome:'Missal', desc:'Livro usado pelo sacerdote no altar, com as orações e rubricas da missa.' },
+      { nome:'Lecionário', desc:'Contém as leituras bíblicas proclamadas no ambão; pode ser dominical, semanal ou santoral (conforme o dia ou festa).' },
+      { nome:'Evangeliário', desc:'Livro que reúne apenas os textos dos evangelhos, usado nas celebrações dominicais e grandes solenidades.' },
+    ]
+  },
+  vestes: {
+    label:'Vestes', icon:'👘',
+    itens: [
+      { nome:'Alva', desc:'Túnica longa e branca, presa na cintura pelo cíngulo, usada como veste-base sob os demais paramentos.' },
+      { nome:'Amito', desc:'Peça de tecido colocada sobre os ombros antes da alva, ao se paramentar para a celebração.' },
+      { nome:'Casula', desc:'Manto usado pelo sacerdote sobre a alva e a estola; o diácono usa, em seu lugar, a dalmática.' },
+      { nome:'Estola', desc:'Faixa que identifica a ordenação; no sacerdote é usada ao pescoço, quase coberta pela casula; no diácono, atravessa do ombro esquerdo à cintura direita.' },
+      { nome:'Véu umeral e capa pluvial', desc:'O véu umeral é usado na bênção do Santíssimo; a capa pluvial, mais ampla, é usada em procissões com o Santíssimo.' },
+    ]
+  },
+  cores: {
+    label:'Cores', icon:'🎨',
+    itens: [
+      { nome:'Branco', cor:'#ffffff', desc:'Paz, vitória, ressurreição e alegria. Usado no Natal, Tempo Pascal e festas do Senhor e de santos não mártires.' },
+      { nome:'Vermelho', cor:'#8B1E2B', desc:'Amor, sangue e martírio. Usado no Domingo de Ramos, Sexta-feira Santa, Pentecostes e festas de apóstolos e mártires.' },
+      { nome:'Verde', cor:'#2F5233', desc:'Esperança. Cor do Tempo Comum, quando não há festa específica de santo ou do Senhor.' },
+      { nome:'Roxo', cor:'#4B2E5C', desc:'Penitência. Usado no Advento, na Quaresma e em missas por fiéis defuntos.' },
+      { nome:'Rosa', cor:'#C97B94', desc:'Alegria em meio à penitência. Usado apenas no 3º domingo do Advento (Gaudete) e no 4º domingo da Quaresma (Laetare).' },
+      { nome:'Preto', cor:'#2B2118', desc:'Luto. Pode ser usado em missas pelos mortos, onde a tradição local o mantém.' },
+    ]
+  },
+  espaco: {
+    label:'O Templo', icon:'⛪',
+    itens: [
+      { nome:'Altar', desc:'Mesa fixa onde se celebra o sacrifício eucarístico; ocupa lugar central no presbitério.' },
+      { nome:'Sacrário (tabernáculo)', desc:'Compartimento onde são guardadas as partículas consagradas; uma lâmpada acesa próxima indica a presença do Santíssimo. O véu que cobre o cibório é o conopeu, na cor litúrgica do dia.' },
+      { nome:'Ambão', desc:'Tribuna destinada à proclamação da Palavra, onde se apoia o lecionário ou evangeliário.' },
+      { nome:'Presbitério', desc:'Área reservada aos que presidem a celebração, geralmente em nível mais elevado; nele ficam o altar, o ambão e os assentos dos ministros.' },
+      { nome:'Credência', desc:'Pequena mesa próxima ao altar onde ficam os objetos litúrgicos antes e depois de seu uso na celebração.' },
+      { nome:'Nave', desc:'Espaço do templo destinado à assembleia dos fiéis.' },
+    ]
+  },
+  nomes: {
+    label:'Outros símbolos', icon:'✝️',
+    itens: [
+      { nome:'IHS', desc:'Abreviação do nome de Jesus em grego; aparece com frequência em paramentos e portas de sacrário.' },
+      { nome:'XP (Cristograma)', desc:'As duas primeiras letras da palavra "Cristo" em grego; um dos símbolos mais antigos do cristianismo.' },
+      { nome:'Alfa e Ômega', desc:'Primeira e última letras do alfabeto grego, representando Cristo como princípio e fim de todas as coisas.' },
+      { nome:'Cordeiro de Deus', desc:'Representação de Cristo, inspirada nas palavras de João Batista: "Eis o Cordeiro de Deus".' },
+    ]
+  }
+};
+
+function renderGlossTabs(){
+  const container = document.getElementById('gloss-tabs');
+  container.innerHTML = Object.entries(glossario).map(([key, g], i)=>
+    `<button data-key="${key}" class="${i===0 ? 'active':''}">${g.icon} ${g.label}</button>`
+  ).join('');
+  container.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      container.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('gloss-search').value = '';
+      renderGlossItems(btn.dataset.key, '');
+    });
+  });
+}
+function renderGlossItems(key, query){
+  const g = glossario[key];
+  const q = query.trim().toLowerCase();
+  const itens = g.itens.filter(it => !q || it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q));
+  const content = document.getElementById('gloss-content');
+  if (!itens.length){
+    content.innerHTML = '<div class="empty">Nenhum item encontrado.</div>';
+    return;
+  }
+  content.innerHTML = itens.map(it=>`
+    <div class="card gloss-item">
+      ${it.cor
+        ? `<h3><span class="color-dot" style="background:${it.cor}"></span>${it.nome}</h3>`
+        : `<div class="icon">${g.icon}</div><h3>${it.nome}</h3>`
+      }
+      <p>${it.desc}</p>
+    </div>
+  `).join('');
+}
+function renderGlossSearchAllTabs(query){
+  // busca em todas as seções ao mesmo tempo
+  const q = query.trim().toLowerCase();
+  const content = document.getElementById('gloss-content');
+  let html = '';
+  Object.values(glossario).forEach(g=>{
+    const itens = g.itens.filter(it => it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q));
+    itens.forEach(it=>{
+      html += `
+        <div class="card gloss-item">
+          ${it.cor
+            ? `<h3><span class="color-dot" style="background:${it.cor}"></span>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>`
+            : `<div class="icon">${g.icon}</div><h3>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>`
+          }
+          <p>${it.desc}</p>
+        </div>`;
+    });
+  });
+  content.innerHTML = html || '<div class="empty">Nenhum item encontrado.</div>';
+}
+renderGlossTabs();
+renderGlossItems('objetos', '');
+document.getElementById('gloss-search').addEventListener('input', (e)=>{
+  const q = e.target.value;
+  if (q.trim()){
+    renderGlossSearchAllTabs(q);
+  } else {
+    const activeKey = document.querySelector('#gloss-tabs button.active').dataset.key;
+    renderGlossItems(activeKey, '');
+  }
+});
+
+/* ===========================================================
+   CALENDÁRIO LITÚRGICO
+=========================================================== */
+const corMap = { branco:'#ffffff', vermelho:'#8B1E2B', verde:'#2F5233', roxo:'#4B2E5C', rosa:'#C97B94', preto:'#2B2118' };
+const meses = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+
+document.getElementById('cal-add-btn').addEventListener('click', ()=> document.getElementById('cal-modal').classList.add('open'));
+document.getElementById('cal-cancel').addEventListener('click', ()=> document.getElementById('cal-modal').classList.remove('open'));
+
+document.getElementById('cal-form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const data = document.getElementById('cal-data').value;
+  const evento = document.getElementById('cal-evento').value.trim();
+  const cor = document.getElementById('cal-cor').value;
+  if (!data || !evento || !cor) return;
+  addToCollection('calendario', { data, evento, cor }).then(()=>{
+    document.getElementById('cal-form').reset();
+    document.getElementById('cal-modal').classList.remove('open');
+  });
+});
+
+function renderCalendar(items){
+  const list = document.getElementById('cal-list');
+  if (!items.length){
+    list.innerHTML = '<div class="empty">Nenhuma data cadastrada ainda. Toque em "+ Data" para adicionar.</div>';
+    return;
+  }
+  const sorted = [...items].sort((a,b)=> new Date(a.data) - new Date(b.data));
+  list.innerHTML = sorted.map(c=>{
+    const d = new Date(c.data + 'T00:00:00');
+    return `
+    <div class="card cal-item" data-id="${c.id}">
+      <div class="cal-date">
+        <div class="d">${d.getDate()}</div>
+        <div class="m">${meses[d.getMonth()]}</div>
+      </div>
+      <div class="cal-body">
+        <h3><span class="color-dot" style="background:${corMap[c.cor]||'#ccc'}"></span>${escapeHtml(c.evento)}</h3>
+        <p class="tag">Cor litúrgica: ${c.cor}</p>
+      </div>
+      <div class="task-actions"><button data-action="delete">Excluir</button></div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.cal-item').forEach(el=>{
+    el.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+      if (confirm('Excluir esta data?')) deleteFromCollection('calendario', el.dataset.id);
+    });
+  });
+}
+watchers['calendario'] = ()=> watchCollection('calendario', 'criadoEm', renderCalendar);
+watchers['calendario']();
+
+/* ===========================================================
+   VÍDEOS
+=========================================================== */
+document.getElementById('video-add-btn').addEventListener('click', ()=> document.getElementById('video-modal').classList.add('open'));
+document.getElementById('video-cancel').addEventListener('click', ()=> document.getElementById('video-modal').classList.remove('open'));
+
+function extractYouTubeId(url){
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{6,})/);
+  return m ? m[1] : null;
+}
+
+document.getElementById('video-form').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const titulo = document.getElementById('video-titulo').value.trim();
+  const url = document.getElementById('video-url').value.trim();
+  if (!titulo || !url) return;
+  addToCollection('videos', { titulo, url }).then(()=>{
+    document.getElementById('video-form').reset();
+    document.getElementById('video-modal').classList.remove('open');
+  });
+});
+
+function renderVideos(items){
+  const list = document.getElementById('video-list');
+  if (!items.length){
+    list.innerHTML = '<div class="empty">Nenhum vídeo salvo ainda. Toque em "+ Link" para adicionar.</div>';
+    return;
+  }
+  list.innerHTML = items.map(v=>{
+    const yid = extractYouTubeId(v.url);
+    const thumb = yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : '';
+    return `
+    <div class="card video-item" data-id="${v.id}">
+      ${thumb ? `<img class="video-thumb" src="${thumb}" alt="">` : '<div class="video-thumb"></div>'}
+      <div style="flex:1;min-width:0;">
+        <h3>${escapeHtml(v.titulo)}</h3>
+        <a href="${v.url}" target="_blank" rel="noopener">Assistir no YouTube ↗</a>
+      </div>
+      <div class="task-actions"><button data-action="delete">Excluir</button></div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.video-item').forEach(el=>{
+    el.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
+      if (confirm('Excluir este vídeo?')) deleteFromCollection('videos', el.dataset.id);
+    });
+  });
+}
+watchers['videos'] = ()=> watchCollection('videos', 'criadoEm', renderVideos);
+watchers['videos']();
+</script>
+</body>
+</html>
