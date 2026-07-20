@@ -112,6 +112,12 @@
     margin-bottom:12px;
   }
 
+  .preset-buttons{
+    display:flex; flex-direction:column; gap:8px;
+    margin-bottom:18px;
+  }
+  .preset-btn{ width:100%; text-align:center; }
+
   /* ---------- Tarefas ---------- */
   .task-form{
     display:flex; flex-direction:column; gap:8px;
@@ -202,6 +208,12 @@
     display:flex; align-items:center; justify-content:center;
     font-size:16px; margin-bottom:8px;
   }
+  .gloss-item .foto{
+    width:100%; max-height:220px; object-fit:contain;
+    background:var(--pergaminho-alt);
+    border-radius:10px; margin-bottom:10px;
+    display:block;
+  }
   .gloss-item h3{ font-size:17px; margin:0 0 4px; font-weight:600; }
   .gloss-item p{ font-size:14px; margin:0; color:#4a3c2c; line-height:1.5; }
   .color-dot{ width:14px; height:14px; border-radius:50%; display:inline-block; margin-right:8px; border:1px solid rgba(0,0,0,0.15); vertical-align:-1px; }
@@ -281,19 +293,10 @@
   <div class="tab-panel active" id="panel-tarefas">
     <section class="block-title"><h2>Tarefas do dia</h2></section>
 
-    <div class="card">
-      <form class="task-form" id="task-form">
-        <input type="text" id="task-titulo" placeholder="Título (ex: Preparar cálice e galhetas)" required>
-        <textarea id="task-obs" placeholder="Observação (opcional)"></textarea>
-        <div class="row">
-          <label class="file-label">
-            📷 Adicionar foto
-            <input type="file" accept="image/*" id="task-foto">
-          </label>
-          <button type="submit" class="btn btn-primary">Adicionar tarefa</button>
-        </div>
-        <div id="task-foto-preview" style="font-size:12.5px;color:var(--tinta-suave);"></div>
-      </form>
+    <div class="preset-buttons">
+      <button class="btn btn-outline preset-btn" id="preset-calice">🍷 Preparação do Cálice</button>
+      <button class="btn btn-outline preset-btn" id="preset-consagracao">⛪ Momento da Consagração</button>
+      <button class="btn btn-primary preset-btn" id="task-add-btn">+ Nova tarefa</button>
     </div>
 
     <div id="tasks-list"></div>
@@ -333,6 +336,26 @@
   <button class="tab-btn" data-tab="calendario"><span class="ic">🗓️</span>Calendário</button>
   <button class="tab-btn" data-tab="videos"><span class="ic">🎥</span>Vídeos</button>
 </nav>
+
+<!-- Modal: nova tarefa -->
+<div class="modal-backdrop" id="task-modal">
+  <div class="modal">
+    <h2>Nova tarefa</h2>
+    <form class="task-form" id="task-form">
+      <input type="text" id="task-titulo" placeholder="Título (ex: Preparar cálice e galhetas)" required>
+      <textarea id="task-obs" placeholder="Observação (opcional)"></textarea>
+      <label class="file-label">
+        📷 Adicionar foto
+        <input type="file" accept="image/*" id="task-foto">
+      </label>
+      <div id="task-foto-preview" style="font-size:12.5px;color:var(--tinta-suave);"></div>
+      <div class="row">
+        <button type="button" class="btn btn-outline" id="task-cancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Adicionar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Modal: nova data no calendário -->
 <div class="modal-backdrop" id="cal-modal">
@@ -381,12 +404,12 @@
    localmente neste navegador (sem sincronizar entre celulares).
 ========================================================= */
 const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyChop2sKKpfdb0i7y5r4IpxAKukV2nAHo8",
+  authDomain: "mesce-nssaude.firebaseapp.com",
+  projectId: "mesce-nssaude",
+  storageBucket: "mesce-nssaude.firebasestorage.app",
+  messagingSenderId: "691812255718",
+  appId: "1:691812255718:web:268b049c3744d9fb3cf827"
 };
 
 let db = null;
@@ -464,7 +487,7 @@ function watchCollection(name, orderField, cb){
   }
 }
 function addToCollection(name, data){
-  data.criadoEm = Date.now();
+  if (data.criadoEm === undefined) data.criadoEm = Date.now();
   if (firebaseReady){
     return db.collection(name).add(data);
   } else {
@@ -506,6 +529,9 @@ const watchers = {};
 =========================================================== */
 let selectedPhoto = null;
 
+document.getElementById('task-add-btn').addEventListener('click', ()=> document.getElementById('task-modal').classList.add('open'));
+document.getElementById('task-cancel').addEventListener('click', ()=> document.getElementById('task-modal').classList.remove('open'));
+
 document.getElementById('task-foto').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if (!file) { selectedPhoto = null; return; }
@@ -539,8 +565,33 @@ document.getElementById('task-form').addEventListener('submit', (e)=>{
     document.getElementById('task-form').reset();
     document.getElementById('task-foto-preview').textContent = '';
     selectedPhoto = null;
+    document.getElementById('task-modal').classList.remove('open');
   });
 });
+
+/* ---- Sequências pré-definidas ---- */
+const presetCalice = [
+  { titulo:'1. Higienização', obs:'Certifique-se de que o cálice e a patena estão limpos, sem manchas ou marcas de dedo.' },
+  { titulo:'2. Sanguíneo (ou Purificador)', obs:'Estenda-o sobre a boca do cálice. Ele serve para secar e limpar o cálice após a comunhão.' },
+  { titulo:'3. Patena', obs:'Coloque-a sobre o sanguíneo, com a hóstia magna (grande) em cima.' },
+  { titulo:'4. Pala', obs:'Posicione a pala (cartão quadrado revestido de pano) sobre a patena para evitar que insetos ou poeira caiam no vinho.' },
+  { titulo:'5. Véu e bolsa', obs:'Cubra tudo com o véu do cálice na cor litúrgica do dia. Sobre o véu, coloque a bolsa (que contém o corporal dobrado).' },
+];
+const presetConsagracao = [
+  { titulo:'1. Cálice principal', obs:'' },
+  { titulo:'2. Cálices menores', obs:'' },
+  { titulo:'3. Galhetas (água e vinho)', obs:'' },
+  { titulo:'4. Conjunto de lavabo e manustérgio', obs:'' },
+  { titulo:'5. Copo de água para o celebrante', obs:'' },
+];
+function addPresetTasks(steps){
+  const base = Date.now();
+  steps.forEach((s, i)=>{
+    addToCollection('tarefas', { titulo:s.titulo, observacao:s.obs, foto:null, concluida:false, criadoEm: base - i });
+  });
+}
+document.getElementById('preset-calice').addEventListener('click', ()=> addPresetTasks(presetCalice));
+document.getElementById('preset-consagracao').addEventListener('click', ()=> addPresetTasks(presetConsagracao));
 
 function renderTasks(items){
   const list = document.getElementById('tasks-list');
@@ -589,39 +640,40 @@ const glossario = {
   objetos: {
     label: 'Objetos', icon:'🏺',
     itens: [
-      { nome:'Âmbula (Cibório / Píxide)', desc:'Recipiente com tampa usado para guardar e distribuir as hóstias consagradas aos fiéis.' },
-      { nome:'Cálice', desc:'Taça em que o vinho é consagrado durante a missa.' },
-      { nome:'Patena', desc:'Pequeno prato metálico usado na consagração do pão e na distribuição da comunhão, para evitar que partículas consagradas caiam.' },
-      { nome:'Teca', desc:'Pequeno estojo metálico usado para levar a comunhão a doentes ou pessoas fora do templo.' },
-      { nome:'Hóstia e partículas', desc:'A hóstia maior é consagrada e consumida pelo sacerdote; as menores, chamadas partículas, são distribuídas aos fiéis. As que ficam guardadas no sacrário para adoração são a reserva eucarística.' },
-      { nome:'Turíbulo e naveta', desc:'O turíbulo é o recipiente onde se queima o incenso durante a incensação; a naveta é o pequeno vaso usado para transportar o incenso até ele.' },
-      { nome:'Crucifixo do altar', desc:'Crucifixo de menor porte que permanece sobre o altar durante a celebração, distinto da cruz processional.' },
-      { nome:'Galhetas', desc:'Par de pequenos recipientes usados para conter a água e o vinho na celebração.' },
-      { nome:'Corporal', desc:'Toalha quadrada estendida sobre o altar, onde se colocam o cálice e a patena durante a celebração.' },
-      { nome:'Pala', desc:'Peça rígida revestida de tecido, usada para cobrir o cálice e a patena.' },
-      { nome:'Sanguíneo (purificatório)', desc:'Pano retangular usado pelo sacerdote para limpar o cálice, e a boca e os dedos, após a comunhão.' },
-      { nome:'Manustérgio', desc:'Toalha pequena usada para secar as mãos no rito do lavabo.' },
-      { nome:'Caldeirinha e aspersório', desc:'A caldeirinha guarda a água benta; o aspersório é o bastão usado para aspergi-la sobre os fiéis.' },
-      { nome:'Ostensório (custódia e luneta)', desc:'Objeto usado para expor o Santíssimo Sacramento à adoração. A custódia é a estrutura fixa; a luneta é a peça circular transparente onde a hóstia consagrada é colocada.' },
-      { nome:'Círio Pascal', desc:'Vela grande, bento na Vigília Pascal, usado durante todo o Tempo Pascal e em batizados ao longo do ano — símbolo da luz de Cristo.' },
+      { nome:'Âmbula (Cibório / Píxide)', desc:'Recipiente com tampa usado para guardar e distribuir as hóstias consagradas aos fiéis.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/ambula.webp' },
+      { nome:'Cálice', desc:'Taça em que o vinho é consagrado durante a missa.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/calice.webp' },
+      { nome:'Patena', desc:'Pequeno prato metálico usado na consagração do pão e na distribuição da comunhão, para evitar que partículas consagradas caiam.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/patena.jpg' },
+      { nome:'Teca', desc:'Pequeno estojo metálico usado para levar a comunhão a doentes ou pessoas fora do templo.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/teca.webp' },
+      { nome:'Hóstia e partículas', desc:'A hóstia maior é consagrada e consumida pelo sacerdote; as menores, chamadas partículas, são distribuídas aos fiéis. As que ficam guardadas no sacrário para adoração são a reserva eucarística.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/particulas.jpg' },
+      { nome:'Turíbulo e naveta', desc:'O turíbulo é o recipiente onde se queima o incenso durante a incensação; a naveta é o pequeno vaso usado para transportar o incenso até ele.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/turibulu%20e%20naveta.webp' },
+      { nome:'Crucifixo do altar', desc:'Crucifixo de menor porte que permanece sobre o altar durante a celebração, distinto da cruz processional.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/crucifixo%20do%20altar.webp' },
+      { nome:'Galhetas', desc:'Par de pequenos recipientes usados para conter a água e o vinho na celebração.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/galhetas.webp' },
+      { nome:'Corporal', desc:'Toalha quadrada estendida sobre o altar, onde se colocam o cálice e a patena durante a celebração.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/corporal.JPG' },
+      { nome:'Pala', desc:'Peça rígida revestida de tecido, usada para cobrir o cálice e a patena.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/pala.webp' },
+      { nome:'Sanguíneo (purificatório)', desc:'Pano retangular usado pelo sacerdote para limpar o cálice, e a boca e os dedos, após a comunhão.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/bc2bc29713176bfe14f27588d92f81f1ac071f2e/sanguineo.webp' },
+      { nome:'Manustérgio', desc:'Toalha pequena usada para secar as mãos no rito do lavabo.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/manustergio.jpg' },
+      { nome:'Caldeirinha e aspersório', desc:'A caldeirinha guarda a água benta; o aspersório é o bastão usado para aspergi-la sobre os fiéis.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/Caldeirinha%20e%20asperso%CC%81rio%20.webp' },
+      { nome:'Ostensório (custódia e luneta)', desc:'Objeto usado para expor o Santíssimo Sacramento à adoração. A custódia é a estrutura fixa; a luneta é a peça circular transparente onde a hóstia consagrada é colocada.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/Ostensorio.webp' },
+      { nome:'Círio Pascal', desc:'Vela grande, bento na Vigília Pascal, usado durante todo o Tempo Pascal e em batizados ao longo do ano — símbolo da luz de Cristo.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/5eca0eb04b3c111e8ef255a4eb51dfee3fdff8c4/cirio%20pascal.webp' },
+      { nome:'Conjunto de lavabo', desc:'Composto por uma jarra (ou ânfora) e uma bacia, é utilizado durante a Santa Missa, no momento do Ofertório, para que o sacerdote lave as mãos.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/f7de6572a8b3346e3ca25001e3dc25ebd0450006/Conjunto%20de%20lavabo.webp' },
     ]
   },
   livros: {
     label:'Livros', icon:'📕',
     itens: [
-      { nome:'Missal', desc:'Livro usado pelo sacerdote no altar, com as orações e rubricas da missa.' },
-      { nome:'Lecionário', desc:'Contém as leituras bíblicas proclamadas no ambão; pode ser dominical, semanal ou santoral (conforme o dia ou festa).' },
-      { nome:'Evangeliário', desc:'Livro que reúne apenas os textos dos evangelhos, usado nas celebrações dominicais e grandes solenidades.' },
+      { nome:'Missal', desc:'Livro usado pelo sacerdote no altar, com as orações e rubricas da missa.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/missal.webp' },
+      { nome:'Lecionário', desc:'Contém as leituras bíblicas proclamadas no ambão; pode ser dominical, semanal ou santoral (conforme o dia ou festa).', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/lecionario.webp' },
+      { nome:'Evangeliário', desc:'Livro que reúne apenas os textos dos evangelhos, usado nas celebrações dominicais e grandes solenidades.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/Evangeliario.webp' },
     ]
   },
   vestes: {
     label:'Vestes', icon:'👘',
     itens: [
-      { nome:'Alva', desc:'Túnica longa e branca, presa na cintura pelo cíngulo, usada como veste-base sob os demais paramentos.' },
-      { nome:'Amito', desc:'Peça de tecido colocada sobre os ombros antes da alva, ao se paramentar para a celebração.' },
-      { nome:'Casula', desc:'Manto usado pelo sacerdote sobre a alva e a estola; o diácono usa, em seu lugar, a dalmática.' },
-      { nome:'Estola', desc:'Faixa que identifica a ordenação; no sacerdote é usada ao pescoço, quase coberta pela casula; no diácono, atravessa do ombro esquerdo à cintura direita.' },
-      { nome:'Véu umeral e capa pluvial', desc:'O véu umeral é usado na bênção do Santíssimo; a capa pluvial, mais ampla, é usada em procissões com o Santíssimo.' },
+      { nome:'Alva', desc:'Túnica longa e branca, presa na cintura pelo cíngulo, usada como veste-base sob os demais paramentos.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/alva.webp' },
+      { nome:'Amito', desc:'Peça de tecido colocada sobre os ombros antes da alva, ao se paramentar para a celebração.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/146f6e240afc4ff0ad8ab04a34b8fb1858485e30/amito.webp' },
+      { nome:'Casula', desc:'Manto usado pelo sacerdote sobre a alva e a estola; o diácono usa, em seu lugar, a dalmática.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/casula.webp' },
+      { nome:'Estola', desc:'Faixa que identifica a ordenação; no sacerdote é usada ao pescoço, quase coberta pela casula; no diácono, atravessa do ombro esquerdo à cintura direita.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/estola.webp' },
+      { nome:'Véu umeral e capa pluvial', desc:'O véu umeral é usado na bênção do Santíssimo; a capa pluvial, mais ampla, é usada em procissões com o Santíssimo.', img:'https://raw.githubusercontent.com/marcelopv-bfr/mesce/9bbb76a0016daa4497900cb93690f625c57eaa3a/Veu%20umeral%20e%20capa%20pluvial%20.jpg' },
     ]
   },
   cores: {
@@ -682,9 +734,10 @@ function renderGlossItems(key, query){
   }
   content.innerHTML = itens.map(it=>`
     <div class="card gloss-item">
+      ${it.img ? `<img class="foto" src="${it.img}" alt="Foto: ${it.nome}" loading="lazy">` : ''}
       ${it.cor
         ? `<h3><span class="color-dot" style="background:${it.cor}"></span>${it.nome}</h3>`
-        : `<div class="icon">${g.icon}</div><h3>${it.nome}</h3>`
+        : (it.img ? `<h3>${it.nome}</h3>` : `<div class="icon">${g.icon}</div><h3>${it.nome}</h3>`)
       }
       <p>${it.desc}</p>
     </div>
@@ -700,9 +753,10 @@ function renderGlossSearchAllTabs(query){
     itens.forEach(it=>{
       html += `
         <div class="card gloss-item">
+          ${it.img ? `<img class="foto" src="${it.img}" alt="Foto: ${it.nome}" loading="lazy">` : ''}
           ${it.cor
             ? `<h3><span class="color-dot" style="background:${it.cor}"></span>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>`
-            : `<div class="icon">${g.icon}</div><h3>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>`
+            : (it.img ? `<h3>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>` : `<div class="icon">${g.icon}</div><h3>${it.nome} <span style="font-size:11px;color:var(--tinta-suave);">· ${g.label}</span></h3>`)
           }
           <p>${it.desc}</p>
         </div>`;
