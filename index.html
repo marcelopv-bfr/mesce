@@ -291,13 +291,18 @@
 
   <!-- TAREFAS -->
   <div class="tab-panel active" id="panel-tarefas">
-    <section class="block-title"><h2>Tarefas do dia</h2></section>
+    <section class="block-title"><h2>Lembretes</h2></section>
 
+    <h3 style="font-size:16px;margin:4px 2px 8px;">Sequências guiadas</h3>
     <div class="preset-buttons">
       <button class="btn btn-outline preset-btn" id="preset-calice">🍷 Preparação do Cálice</button>
       <button class="btn btn-outline preset-btn" id="preset-consagracao">⛪ Momento da Consagração</button>
-      <button class="btn btn-primary preset-btn" id="task-add-btn">+ Nova tarefa</button>
     </div>
+
+    <section class="block-title">
+      <h3 style="font-size:16px;margin:0;">Minhas anotações</h3>
+      <button class="btn btn-primary btn-small" id="task-add-btn">+ Nova anotação</button>
+    </section>
 
     <div id="tasks-list"></div>
   </div>
@@ -337,13 +342,13 @@
   <button class="tab-btn" data-tab="videos"><span class="ic">🎥</span>Vídeos</button>
 </nav>
 
-<!-- Modal: nova tarefa -->
+<!-- Modal: nova anotação -->
 <div class="modal-backdrop" id="task-modal">
   <div class="modal">
-    <h2>Nova tarefa</h2>
+    <h2>Nova anotação</h2>
     <form class="task-form" id="task-form">
-      <input type="text" id="task-titulo" placeholder="Título (ex: Preparar cálice e galhetas)" required>
-      <textarea id="task-obs" placeholder="Observação (opcional)"></textarea>
+      <input type="text" id="task-titulo" placeholder="Título (ex: Preparação da patena para batismo)" required>
+      <textarea id="task-obs" placeholder="Escreva aqui a sequência de passos que você quer lembrar..." rows="5"></textarea>
       <label class="file-label">
         📷 Adicionar foto
         <input type="file" accept="image/*" id="task-foto">
@@ -351,9 +356,18 @@
       <div id="task-foto-preview" style="font-size:12.5px;color:var(--tinta-suave);"></div>
       <div class="row">
         <button type="button" class="btn btn-outline" id="task-cancel">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Adicionar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Modal: sequência guiada (somente leitura) -->
+<div class="modal-backdrop" id="preset-modal">
+  <div class="modal">
+    <h2 id="preset-modal-title" class="serif"></h2>
+    <div id="preset-modal-content"></div>
+    <button class="btn btn-outline" id="preset-modal-close" style="margin-top:16px;width:100%;">Fechar</button>
   </div>
 </div>
 
@@ -560,7 +574,7 @@ document.getElementById('task-form').addEventListener('submit', (e)=>{
   const obs = document.getElementById('task-obs').value.trim();
   if (!titulo) return;
   addToCollection('tarefas', {
-    titulo, observacao: obs, foto: selectedPhoto || null, concluida: false
+    titulo, observacao: obs, foto: selectedPhoto || null
   }).then(()=>{
     document.getElementById('task-form').reset();
     document.getElementById('task-foto-preview').textContent = '';
@@ -569,43 +583,45 @@ document.getElementById('task-form').addEventListener('submit', (e)=>{
   });
 });
 
-/* ---- Sequências pré-definidas ---- */
+/* ---- Sequências guiadas (apenas leitura, não geram itens na lista) ---- */
 const presetCalice = [
-  { titulo:'1. Higienização', obs:'Certifique-se de que o cálice e a patena estão limpos, sem manchas ou marcas de dedo.' },
-  { titulo:'2. Sanguíneo (ou Purificador)', obs:'Estenda-o sobre a boca do cálice. Ele serve para secar e limpar o cálice após a comunhão.' },
-  { titulo:'3. Patena', obs:'Coloque-a sobre o sanguíneo, com a hóstia magna (grande) em cima.' },
-  { titulo:'4. Pala', obs:'Posicione a pala (cartão quadrado revestido de pano) sobre a patena para evitar que insetos ou poeira caiam no vinho.' },
-  { titulo:'5. Véu e bolsa', obs:'Cubra tudo com o véu do cálice na cor litúrgica do dia. Sobre o véu, coloque a bolsa (que contém o corporal dobrado).' },
+  { titulo:'Higienização', obs:'Certifique-se de que o cálice e a patena estão limpos, sem manchas ou marcas de dedo.' },
+  { titulo:'Sanguíneo (ou Purificador)', obs:'Estenda-o sobre a boca do cálice. Ele serve para secar e limpar o cálice após a comunhão.' },
+  { titulo:'Patena', obs:'Coloque-a sobre o sanguíneo, com a hóstia magna (grande) em cima.' },
+  { titulo:'Pala', obs:'Posicione a pala (cartão quadrado revestido de pano) sobre a patena para evitar que insetos ou poeira caiam no vinho.' },
+  { titulo:'Véu e bolsa', obs:'Cubra tudo com o véu do cálice na cor litúrgica do dia. Sobre o véu, coloque a bolsa (que contém o corporal dobrado).' },
 ];
 const presetConsagracao = [
-  { titulo:'1. Cálice principal', obs:'' },
-  { titulo:'2. Cálices menores', obs:'' },
-  { titulo:'3. Galhetas (água e vinho)', obs:'' },
-  { titulo:'4. Conjunto de lavabo e manustérgio', obs:'' },
-  { titulo:'5. Copo de água para o celebrante', obs:'' },
+  { titulo:'Cálice principal' },
+  { titulo:'Cálices menores' },
+  { titulo:'Galhetas (água e vinho)' },
+  { titulo:'Conjunto de lavabo e manustérgio' },
+  { titulo:'Copo de água para o celebrante' },
 ];
-function addPresetTasks(steps){
-  const base = Date.now();
-  steps.forEach((s, i)=>{
-    addToCollection('tarefas', { titulo:s.titulo, observacao:s.obs, foto:null, concluida:false, criadoEm: base - i });
-  });
+function openPreset(titulo, steps){
+  document.getElementById('preset-modal-title').textContent = titulo;
+  document.getElementById('preset-modal-content').innerHTML =
+    '<ol style="padding-left:20px;margin:0;">' +
+    steps.map(s => `<li style="margin-bottom:12px;"><strong>${escapeHtml(s.titulo)}</strong>${s.obs ? `<br><span style="font-size:13.5px;color:var(--tinta-suave);">${escapeHtml(s.obs)}</span>` : ''}</li>`).join('') +
+    '</ol>';
+  document.getElementById('preset-modal').classList.add('open');
 }
-document.getElementById('preset-calice').addEventListener('click', ()=> addPresetTasks(presetCalice));
-document.getElementById('preset-consagracao').addEventListener('click', ()=> addPresetTasks(presetConsagracao));
+document.getElementById('preset-calice').addEventListener('click', ()=> openPreset('🍷 Preparação do Cálice', presetCalice));
+document.getElementById('preset-consagracao').addEventListener('click', ()=> openPreset('⛪ Momento da Consagração', presetConsagracao));
+document.getElementById('preset-modal-close').addEventListener('click', ()=> document.getElementById('preset-modal').classList.remove('open'));
 
 function renderTasks(items){
   const list = document.getElementById('tasks-list');
   if (!items.length){
-    list.innerHTML = '<div class="empty">Nenhuma tarefa ainda. Adicione a primeira acima ✝</div>';
+    list.innerHTML = '<div class="empty">Nenhuma anotação ainda. Toque em "+ Nova anotação" para criar a primeira ✝</div>';
     return;
   }
   list.innerHTML = items.map(t=>`
     <div class="card task-item" data-id="${t.id}">
-      <div class="task-check ${t.concluida ? 'done':''}" data-action="toggle">${t.concluida ? '✓' : ''}</div>
-      <div class="task-body">
-        <p class="task-title ${t.concluida ? 'done':''}">${escapeHtml(t.titulo)}</p>
+      <div class="task-body" style="width:100%;">
+        <p class="task-title">${escapeHtml(t.titulo)}</p>
         ${t.observacao ? `<p class="task-note">${escapeHtml(t.observacao)}</p>` : ''}
-        ${t.foto ? `<img class="task-photo" src="${t.foto}" alt="Foto da tarefa">` : ''}
+        ${t.foto ? `<img class="task-photo" src="${t.foto}" alt="Foto da anotação">` : ''}
         <div class="task-actions">
           <button data-action="delete">Excluir</button>
         </div>
@@ -615,12 +631,8 @@ function renderTasks(items){
 
   list.querySelectorAll('.task-item').forEach(el=>{
     const id = el.dataset.id;
-    el.querySelector('[data-action="toggle"]').addEventListener('click', ()=>{
-      const item = items.find(i=>i.id===id);
-      updateInCollection('tarefas', id, { concluida: !item.concluida });
-    });
     el.querySelector('[data-action="delete"]').addEventListener('click', ()=>{
-      if (confirm('Excluir esta tarefa?')) deleteFromCollection('tarefas', id);
+      if (confirm('Excluir esta anotação?')) deleteFromCollection('tarefas', id);
     });
   });
 }
@@ -726,7 +738,9 @@ function renderGlossTabs(){
 function renderGlossItems(key, query){
   const g = glossario[key];
   const q = query.trim().toLowerCase();
-  const itens = g.itens.filter(it => !q || it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q));
+  const itens = g.itens
+    .filter(it => !q || it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q))
+    .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const content = document.getElementById('gloss-content');
   if (!itens.length){
     content.innerHTML = '<div class="empty">Nenhum item encontrado.</div>';
@@ -749,7 +763,9 @@ function renderGlossSearchAllTabs(query){
   const content = document.getElementById('gloss-content');
   let html = '';
   Object.values(glossario).forEach(g=>{
-    const itens = g.itens.filter(it => it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q));
+    const itens = g.itens
+      .filter(it => it.nome.toLowerCase().includes(q) || it.desc.toLowerCase().includes(q))
+      .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     itens.forEach(it=>{
       html += `
         <div class="card gloss-item">
